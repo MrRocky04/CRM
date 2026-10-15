@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         String    @default("USER") // ADMIN, USER
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Customer {
+  id                 String          @id @default(uuid())
+  woocommerceId      Int?            @unique
+  email              String          @unique
+  firstName          String
+  lastName           String
+  phone              String?
+  source             String          @default("CRM") // WOOCOMMERCE, CRM
+  billingAddress     String?
+  shippingAddress    String?
+  segment            String          @default("New") // New, Repeat, Loyal, Inactive
+  totalSpent         Float           @default(0)
+  orderCount         Int             @default(0)
+  lastOrderDate      DateTime?
+  avatarUrl          String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  notes              CustomerNote[]
+  orders             Order[]
+  tasks              Task[]
+  communications     Communication[]
+}
+
+model CustomerNote {
+  id         String   @id @default(uuid())
+  customerId String
+  authorId   String?
+  authorName String   @default("CRM User")
+  content    String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id                 String      @id @default(uuid())
+  woocommerceId      Int         @unique
+  orderNumber        String
+  customerId         String?
+  status             String      // pending, processing, on-hold, completed, cancelled, refunded, failed
+  total              Float
+  subtotal           Float       @default(0)
+  taxTotal           Float       @default(0)
+  shippingTotal      Float       @default(0)
+  discountTotal      Float       @default(0)
+  currency           String      @default("USD")
+  paymentMethod      String?
+  paymentMethodTitle String?
+  dateCreated        DateTime
+  dateModified       DateTime?
+  billingName        String?
+  billingEmail       String?
+  billingPhone       String?
+  billingAddress     String?
+  shippingAddress    String?
+  customerNote       String?
+  isGuest            Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  customer           Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items              OrderItem[]
+}
+
+model OrderItem {
+  id            String  @id @default(uuid())
+  orderId       String
+  woocommerceId Int?
+  name          String
+  productId     Int?
+  variationId   Int?
+  quantity      Int     @default(1)
+  price         Float   @default(0)
+  subtotal      Float   @default(0)
+  total         Float   @default(0)
+  sku           String?
+  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id           String    @id @default(uuid())
+  title        String
+  description  String?
+  customerId   String?
+  assignedToId String?
+  dueDate      DateTime?
+  priority     String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status       String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+  completedAt  DateTime?
+  source       String    @default("MANUAL")  // MANUAL, WORKFLOW, ACTION_AGENT
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  customer     Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+}
+
+model EmailTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  subject     String
+  body        String   // Accepts {{name}} and {{email}} placeholders
+  description String?
+  category    String   @default("GENERAL") // GENERAL, WELCOME, RETENTION, FOLLOW_UP, PROMOTION
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Communication {
+  id                String    @id @default(uuid())
+  customerId        String
+  recipientEmail    String
+  recipientName     String?
+  subject           String
+  body              String
+  templateId        String?
+  status            String    @default("PENDING") // DRAFT, PENDING, ACCEPTED, DELIVERED, FAILED, BOUNCED, COMPLAINED
+  provider          String    @default("RESEND")
+  providerMessageId String?
+  errorMessage      String?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  openedAt          DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  customer          Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+model Workflow {
+  id            String        @id @default(uuid())
+  name          String
+  description   String?
+  enabled       Boolean       @default(false)
+  triggerType   String        // INACTIVE_CUSTOMER, NEW_ORDER, HIGH_VALUE_ORDER, ORDER_STATUS_CHANGED
+  triggerConfig String        // JSON string e.g. {"daysInactive":60}
+  actionType    String        // CREATE_TASK, DRAFT_EMAIL, SEND_EMAIL
+  actionConfig  String        // JSON string e.g. {"taskTitle":"Reach out to inactive client"}
+  lastRunAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  runs          WorkflowRun[]
+}
+
+model WorkflowRun {
+  id             String   @id @default(uuid())
+  workflowId     String
+  status         String   // SUCCESS, FAILED, SKIPPED
+  idempotencyKey String   @unique
+  targetId       String?
+  actionTaken    String?
+  details        String?
+  executedAt     DateTime @default(now())
+  workflow       Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+}
+
+model WebhookEvent {
+  id             String   @id @default(uuid())
+  source         String   // WOOCOMMERCE, RESEND
+  eventType      String
+  idempotencyKey String   @unique
+  payload        String
+  status         String   // PROCESSED, IGNORED, FAILED
+  errorMessage   String?
+  processedAt    DateTime @default(now())
+}
+
+model SyncState {
+  id                  String    @id @default(uuid())
+  syncType            String    @unique // WOOCOMMERCE_FULL, WOOCOMMERCE_CUSTOMERS, WOOCOMMERCE_ORDERS
+  status              String    @default("IDLE") // IDLE, IN_PROGRESS, SUCCESS, FAILED
+  lastSyncStartedAt   DateTime?
+  lastSyncCompletedAt DateTime?
+  recordsProcessed    Int       @default(0)
+  errorsCount         Int       @default(0)
+  lastError           String?
+  details             String?
+}

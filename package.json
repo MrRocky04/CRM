@@ -1,0 +1,24 @@
+{
+  "name": "merqanta",
+  "version": "1.0.0",
+  "description": "Merqanta - Full-stack Autonomous Commerce CRM with Supabase PostgreSQL, Prisma ORM, React Vite frontend, Resend email integration, and evidence-grounded Action Agent",
+  "private": true,
+  "workspaces": [
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm --prefix server install && npm --prefix client install",
+    "dev": "concurrently -n \"server,client\" -c \"blue,green\" \"npm run --prefix server dev\" \"npm run --prefix client dev\"",
+    "build": "npm run --prefix server build && npm run --prefix client build",
+    "start": "npm run --prefix server start",
+    "test": "npm run --prefix server test",
+    "prisma:generate": "npm run --prefix server prisma:generate",
+    "prisma:migrate": "npm run --prefix server prisma:migrate",
+    "prisma:seed": "npm run --prefix server prisma:seed",
+    "admin:provision": "npm run --prefix server admin:provision"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
