@@ -31,9 +31,9 @@ async function main() {
   });
 
   // Also provision environment admin if specified
-  const envAdminEmail = process.env.ADMIN_EMAIL || 'ansariramzan2004@gmail.com';
-  const envAdminPassword = process.env.ADMIN_PASSWORD || 'Mr@Rockwell2004';
-  const envAdminName = process.env.ADMIN_NAME || 'Mr Rocky';
+  const envAdminEmail = process.env.ADMIN_EMAIL || 'admin@crm.local';
+  const envAdminPassword = process.env.ADMIN_PASSWORD || 'AdminPassword123!';
+  const envAdminName = process.env.ADMIN_NAME || 'CRM Administrator';
   const envAdminHash = await bcrypt.hash(envAdminPassword, 10);
 
   await prisma.user.upsert({
